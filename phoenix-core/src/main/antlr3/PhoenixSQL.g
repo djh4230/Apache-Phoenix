@@ -125,6 +125,8 @@ tokens
     REPLACE = 'replace';
     LIST = 'list';
     JARS='jars';
+    INSERT='insert';
+    UPDATE='update';
 }
 
 
@@ -390,6 +392,8 @@ oneStatement returns [BindableStatement ret]
 @init{ contextStack.push(new ParseContext()); }
     :  (s=select_node
     |	s=upsert_node
+    |   s=insert_node
+    |   s=update_node
     |   s=delete_node
     |   s=create_table_node
     |   s=create_view_node
@@ -680,6 +684,26 @@ upsert_node returns [UpsertStatement ret]
     ;
 
 upsert_column_refs returns [Pair<List<ColumnDef>,List<ColumnName>> ret]
+@init{ret = new Pair<List<ColumnDef>,List<ColumnName>>(new ArrayList<ColumnDef>(), new ArrayList<ColumnName>()); }
+    :  d=dyn_column_name_or_def { if (d.getDataType()!=null) { $ret.getFirst().add(d); } $ret.getSecond().add(d.getColumnDefName()); } 
+       (COMMA d=dyn_column_name_or_def { if (d.getDataType()!=null) { $ret.getFirst().add(d); } $ret.getSecond().add(d.getColumnDefName()); } )*
+;
+
+update_node returns [UpdateStatement ret]
+    :   UPDATE t=from_table_name
+        (SET v=one_or_more_expressions)
+        (WHERE where=expression)?
+        {ret = factory.update(factory.namedTable(null,t,null), null,null, v,where, null, getBindCount(), new HashMap<String, UDFParseNode>(udfParseNodes)); }
+    ;
+
+insert_node returns [InsertStatement ret]
+    :   INSERT (hint=hintClause)? INTO t=from_table_name
+        (LPAREN p=insert_column_refs RPAREN)?
+        ((VALUES LPAREN v=one_or_more_expressions RPAREN))
+        {ret = factory.insert(factory.namedTable(null,t,p == null ? null : p.getFirst()), hint, p == null ? null : p.getSecond(), v, getBindCount(), new HashMap<String, UDFParseNode>(udfParseNodes)); }
+    ;
+
+insert_column_refs returns [Pair<List<ColumnDef>,List<ColumnName>> ret]
 @init{ret = new Pair<List<ColumnDef>,List<ColumnName>>(new ArrayList<ColumnDef>(), new ArrayList<ColumnName>()); }
     :  d=dyn_column_name_or_def { if (d.getDataType()!=null) { $ret.getFirst().add(d); } $ret.getSecond().add(d.getColumnDefName()); } 
        (COMMA d=dyn_column_name_or_def { if (d.getDataType()!=null) { $ret.getFirst().add(d); } $ret.getSecond().add(d.getColumnDefName()); } )*

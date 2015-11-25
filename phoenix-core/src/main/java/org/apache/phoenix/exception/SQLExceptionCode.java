@@ -72,6 +72,7 @@ public enum SQLExceptionCode {
         }
     }),
     VALUE_IN_UPSERT_NOT_CONSTANT(204, "22008", "Values in UPSERT must evaluate to a constant."),
+    VALUE_IN_INSERT_NOT_CONSTANT(219, "22019", "Values in INSERT must evaluate to a constant."),
     MALFORMED_URL(205, "22009", "Malformed URL."),
     DATA_EXCEEDS_MAX_CAPACITY(206, "22003", "The data exceeds the max capacity for the data type."),
     MISSING_CHAR_LENGTH(207, "22003", "Missing length for CHAR."),
@@ -219,6 +220,7 @@ public enum SQLExceptionCode {
     AGGREGATE_WITH_NOT_GROUP_BY_COLUMN(1018, "42Y27", "Aggregate may not contain columns not in GROUP BY."),
     ONLY_AGGREGATE_IN_HAVING_CLAUSE(1019, "42Y26", "Only aggregate maybe used in the HAVING clause."),
     UPSERT_COLUMN_NUMBERS_MISMATCH(1020, "42Y60", "Number of columns upserting must match number of values."),
+    INSERT_COLUMN_NUMBERS_MISMATCH(1057, "43A15", "Number of columns inserting must match number of values."),
     // Table properties exception.
     INVALID_BUCKET_NUM(1021, "42Y80", "Salt bucket numbers should be with 1 and 256."),
     NO_SPLITS_ON_SALTED_TABLE(1022, "42Y81", "Should not specify split points on salted table with default row key order."),

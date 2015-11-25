@@ -691,6 +691,14 @@ public class ParseNodeFactory {
         return new UpsertStatement(table, hint, columns, values, select, bindCount, udfParseNodes);
     }
 
+    public UpdateStatement update(NamedTableNode table, HintNode hint,List<ColumnName> columns,  List<ParseNode> values,ParseNode where, SelectStatement select, int bindCount, Map<String, UDFParseNode> udfParseNodes) {
+        return new UpdateStatement(table, null,null, values, where,null, bindCount, udfParseNodes);
+    }
+
+    public InsertStatement insert(NamedTableNode table, HintNode hint, List<ColumnName> columns, List<ParseNode> values,  int bindCount, Map<String, UDFParseNode> udfParseNodes) {
+        return new InsertStatement(table, hint, columns, values, bindCount, udfParseNodes);
+    }
+
     public DeleteStatement delete(NamedTableNode table, HintNode hint, ParseNode node, List<OrderByNode> orderBy, LimitNode limit, int bindCount, Map<String, UDFParseNode> udfParseNodes) {
         return new DeleteStatement(table, hint, node, orderBy, limit, bindCount, udfParseNodes);
     }

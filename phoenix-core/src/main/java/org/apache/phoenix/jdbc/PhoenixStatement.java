@@ -58,6 +58,7 @@ import org.apache.phoenix.compile.ExplainPlan;
 import org.apache.phoenix.compile.ExpressionProjector;
 import org.apache.phoenix.compile.FromCompiler;
 import org.apache.phoenix.compile.GroupByCompiler.GroupBy;
+import org.apache.phoenix.compile.InsertCompiler;
 import org.apache.phoenix.compile.ListJarsQueryPlan;
 import org.apache.phoenix.compile.MutationPlan;
 import org.apache.phoenix.compile.OrderByCompiler.OrderBy;
@@ -70,6 +71,7 @@ import org.apache.phoenix.compile.StatementPlan;
 import org.apache.phoenix.compile.SubqueryRewriter;
 import org.apache.phoenix.compile.SubselectRewriter;
 import org.apache.phoenix.compile.TraceQueryPlan;
+import org.apache.phoenix.compile.UpdateCompiler;
 import org.apache.phoenix.compile.UpsertCompiler;
 import org.apache.phoenix.coprocessor.MetaDataProtocol;
 import org.apache.phoenix.exception.BatchUpdateExecution;
@@ -103,6 +105,7 @@ import org.apache.phoenix.parse.ExplainStatement;
 import org.apache.phoenix.parse.FilterableStatement;
 import org.apache.phoenix.parse.HintNode;
 import org.apache.phoenix.parse.IndexKeyConstraint;
+import org.apache.phoenix.parse.InsertStatement;
 import org.apache.phoenix.parse.LimitNode;
 import org.apache.phoenix.parse.ListJarsStatement;
 import org.apache.phoenix.parse.LiteralParseNode;
@@ -119,6 +122,7 @@ import org.apache.phoenix.parse.TableName;
 import org.apache.phoenix.parse.TableNode;
 import org.apache.phoenix.parse.TraceStatement;
 import org.apache.phoenix.parse.UDFParseNode;
+import org.apache.phoenix.parse.UpdateStatement;
 import org.apache.phoenix.parse.UpdateStatisticsStatement;
 import org.apache.phoenix.parse.UpsertStatement;
 import org.apache.phoenix.query.HBaseFactoryProvider;
@@ -383,7 +387,7 @@ public class PhoenixStatement implements Statement, SQLCloseable, org.apache.pho
         }
 
     }
-    
+
     private static final byte[] EXPLAIN_PLAN_FAMILY = QueryConstants.SINGLE_COLUMN_FAMILY;
     private static final byte[] EXPLAIN_PLAN_COLUMN = PVarchar.INSTANCE.toBytes("Plan");
     private static final String EXPLAIN_PLAN_ALIAS = "PLAN";
@@ -547,6 +551,41 @@ public class PhoenixStatement implements Statement, SQLCloseable, org.apache.pho
                 stmt.throwIfUnallowedUserDefinedFunctions(getUdfParseNodes());
             }
             UpsertCompiler compiler = new UpsertCompiler(stmt);
+            MutationPlan plan = compiler.compile(this);
+            plan.getContext().getSequenceManager().validateSequences(seqAction);
+            return plan;
+        }
+    }
+
+    private static class ExecutableUpdateStatement extends UpdateStatement implements CompilableStatement {
+        private ExecutableUpdateStatement(NamedTableNode table, HintNode hintNode, List<ColumnName> columns, List<ParseNode> values,ParseNode where, SelectStatement select, int bindCount, Map<String, UDFParseNode> udfParseNodes) {
+            super(table, hintNode, columns, values,where, select, bindCount, udfParseNodes);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public MutationPlan compilePlan(PhoenixStatement stmt, Sequence.ValueOp seqAction) throws SQLException {
+            if(!getUdfParseNodes().isEmpty()) {
+                stmt.throwIfUnallowedUserDefinedFunctions(getUdfParseNodes());
+            }
+            UpdateCompiler compiler = new UpdateCompiler(stmt);
+            MutationPlan plan = compiler.compile(this);
+            plan.getContext().getSequenceManager().validateSequences(seqAction);
+            return plan;
+        }
+    }
+    private static class ExecutableInsertStatement extends InsertStatement implements CompilableStatement {
+        private ExecutableInsertStatement(NamedTableNode table, HintNode hintNode, List<ColumnName> columns, List<ParseNode> values, int bindCount, Map<String, UDFParseNode> udfParseNodes) {
+            super(table, hintNode, columns, values, bindCount, udfParseNodes);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public MutationPlan compilePlan(PhoenixStatement stmt, Sequence.ValueOp seqAction) throws SQLException {
+            if(!getUdfParseNodes().isEmpty()) {
+                stmt.throwIfUnallowedUserDefinedFunctions(getUdfParseNodes());
+            }
+            InsertCompiler compiler = new InsertCompiler(stmt);
             MutationPlan plan = compiler.compile(this);
             plan.getContext().getSequenceManager().validateSequences(seqAction);
             return plan;
@@ -1159,6 +1198,16 @@ public class PhoenixStatement implements Statement, SQLCloseable, org.apache.pho
         @Override
         public ExecutableUpsertStatement upsert(NamedTableNode table, HintNode hintNode, List<ColumnName> columns, List<ParseNode> values, SelectStatement select, int bindCount, Map<String, UDFParseNode> udfParseNodes) {
             return new ExecutableUpsertStatement(table, hintNode, columns, values, select, bindCount, udfParseNodes);
+        }
+
+        @Override
+        public ExecutableUpdateStatement update(NamedTableNode table, HintNode hintNode, List<ColumnName> columns, List<ParseNode> values,ParseNode where, SelectStatement select, int bindCount, Map<String, UDFParseNode> udfParseNodes) {
+            return new ExecutableUpdateStatement(table, hintNode, columns, values,where, select, bindCount, udfParseNodes);
+        }
+
+        @Override
+        public ExecutableInsertStatement insert(NamedTableNode table, HintNode hintNode, List<ColumnName> columns, List<ParseNode> values, int bindCount, Map<String, UDFParseNode> udfParseNodes) {
+            return new ExecutableInsertStatement(table, hintNode, columns, values, bindCount, udfParseNodes);
         }
         
         @Override
